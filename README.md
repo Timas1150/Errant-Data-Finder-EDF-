@@ -20,7 +20,7 @@
 O repositório implementa um padrão visual de nível editorial (**150 DPI**, tipografia `DejaVu Sans`, escalas explícitas, anotações diretas e contraste validado via *Visual QA*) governado pela skill `chart-image`.
 
 ### Blindagem Estatística contra Dados Errantes (`grafico_edf.png`)
-> Captura automática de erro de ordem de grandeza ($\text{R\$ } 1.100{,}00$ vs. $\text{R\$ } 110{,}00$), aplicação de *Winsorization/Clipping* no limite superior interquartil ($LS = \text{R\$ } 123{,}12$) sem exclusão de linhas e restauração da capacidade discriminatória das notas de 1 a 10.
+> Captura automática de erro de ordem de grandeza (`R$ 1.100,00` vs. `R$ 110,00`), aplicação de *Winsorization/Clipping* no limite superior interquartil (`LS = R$ 123,12`) sem exclusão de linhas e restauração da capacidade discriminatória das notas de 1 a 10.
 
 ![Errant Data Finder — Auditoria de Outliers e Blindagem da Matriz de Decisão](resultados/grafico_edf.png)
 
@@ -38,9 +38,9 @@ O repositório implementa um padrão visual de nível editorial (**150 DPI**, ti
 
 ## 2. Propósito e Visão Geral do Projeto
 
-Em processos de seleção de fornecedores e tomada de decisão multicritério (*Multi-Criteria Decision Analysis — MCDA*), tabelas pequenas ($N = 4$ candidatos) são altamente vulneráveis a **dados errantes** (*outliers*, erros de digitação com um zero a mais ou deslocamento de casa decimal).
+Em processos de seleção de fornecedores e tomada de decisão multicritério (*Multi-Criteria Decision Analysis — MCDA*), tabelas pequenas (`N = 4` candidatos) são altamente vulneráveis a **dados errantes** (*outliers*, erros de digitação com um zero a mais ou deslocamento de casa decimal).
 
-- **O problema clássico:** se uma linha com erro de digitação for excluída (*listwise deletion*), um fornecedor real é sumariamente eliminado da concorrência. Por outro lado, se o valor extremo permanecer bruto na tabela, a normalização Min-Max para a escala de 1 a 10 sofre **compressão severa**: o denominador $(x_{\max} - x_{\min})$ explode e todos os demais fornecedores recebem notas artificialmente coladas próximas a $10{,}0$.
+- **O problema clássico:** se uma linha com erro de digitação for excluída (*listwise deletion*), um fornecedor real é sumariamente eliminado da concorrência. Por outro lado, se o valor extremo permanecer bruto na tabela, a normalização Min-Max para a escala de 1 a 10 sofre **compressão severa**: o denominador `(x_max - x_min)` explode e todos os demais fornecedores recebem notas artificialmente coladas próximas a **10,0**.
 - **A solução deste repositório:** uma arquitetura modular baseada em **AI Agent Skills** no ambiente **Google Antigravity**, onde cada etapa do ciclo de vida analítico é regida por contratos formais em `.agents/skills/` e materializada por scripts Python determinísticos e auditáveis.
 
 ### Fluxo Completo do Pipeline
@@ -99,11 +99,11 @@ errant-data-finder/
 
 ## 3. Arquitetura de Skills (`.agents/skills/`)
 
-As skills localizadas em `.agents/skills/` encapsulam conhecimento de domínio, fórmulas matemáticas e critérios de aceite para execução autônoma ou assistida por agentes:
+As skills localizadas em `.agents/skills/` encapsulam conhecimento de domínio, regras estatísticas e critérios de aceite para execução autônoma ou assistida por agentes:
 
 | Skill | Caminho no Repositório | Papel Arquitetural e Regras Técnicas | Script Associado |
 | :--- | :--- | :--- | :--- |
-| **`errant-data-finder`** | `.agents/skills/errant-data-finder/SKILL.md` | **Blindagem Estatística de Outliers (EDF):**<br/>• Detecta automaticamente colunas numéricas auditáveis e infere a direção do critério.<br/>• Calcula divergência percentual entre Média ($\mu$) e Mediana ($Q_2$): $\frac{\|\mu - Q_2\|}{\|Q_2\|} \times 100$.<br/>• Aplica detecção dupla via **IQR de Tukey** ($LI = Q_1 - 1{,}5\cdot\text{IQR}$, $LS = Q_3 + 1{,}5\cdot\text{IQR}$) e **Z-Score** ($Z = \frac{\|x-\mu\|}{\sigma}$, considerando o teto de Shiffler $Z_{\max} = \frac{N-1}{\sqrt{N}} = 1{,}50$ para $N=4$ e $Z_{\text{robusto}}$ via MAD).<br/>• Trata anomalias por **Winsorization / Clipping** ($x_{\text{edf}} = \min(\max(x, LI), LS)$) sem descartar nenhuma linha, preservando a escala de 1 a 10. | `errant_finder.py` |
+| **`errant-data-finder`** | `.agents/skills/errant-data-finder/SKILL.md` | **Blindagem Estatística de Outliers (EDF):**<br/>• Detecta automaticamente colunas numéricas auditáveis e infere a direção do critério.<br/>• Calcula a divergência percentual entre Média (`μ`) e Mediana (`Q2`): `abs(μ - Q2) / abs(Q2) × 100`.<br/>• Aplica detecção dupla via **IQR de Tukey** (`LI = Q1 - 1,5 × IQR`, `LS = Q3 + 1,5 × IQR`) e **Z-Score** (`Z = abs(x - μ) / σ`, considerando o teto de Shiffler `Z_max = (N - 1) / √N = 1,50` para `N = 4` e `Z_robusto` via MAD).<br/>• Trata anomalias por **Winsorization / Clipping** (`x_edf = min(max(x, LI), LS)`) sem descartar nenhuma linha, preservando a escala de 1 a 10. | `errant_finder.py` |
 | **`conferir-csv`** | `.agents/skills/conferir-csv/SKILL.md` | **Auditoria Estrutural e Qualidade de Dados:**<br/>• Inspeciona delimitadores, esquema de colunas, cardinalidade e tipagem.<br/>• Contabiliza valores ausentes (`NaN`, strings vazias ou espaços) e registros duplicados.<br/>• Garante a imutabilidade de `dados/fornecedores.csv` e exporta a base validada para `resultados/fornecedores_corrigido.csv`. | `analise_qualidade.py` |
 | **`decision-matrix`** | `.agents/skills/decision-matrix/SKILL.md` | **Análise de Decisão Multicritério (MCDA):**<br/>• Normaliza métricas heterogêneas para a escala de **1 a 10**.<br/>• Aplica pesos estratégicos: Preço Unitário (`30%`), Prazo de Entrega (`20%`), Taxa de Defeitos (`30%`) e Nota de Suporte (`20%`).<br/>• Calcula o escore global ponderado, analisa *trade-offs* e documenta a recomendação defensável. | `fornecedores.py` |
 | **`chart-image`** | `.agents/skills/chart-image/SKILL.md` | **Engenharia Visual de Publicação (150 DPI):**<br/>• Padroniza gráficos com títulos hierárquicos, rótulos de unidades explícitos, linhas de referência estatística e paletas de alto contraste.<br/>• Exige inspeção visual (*Visual QA*) da imagem renderizada para impedir sobreposição de textos ou truncamento de eixos. | `errant_finder.py`<br/>`fornecedores.py`<br/>`termometro.py` |
@@ -157,26 +157,26 @@ Todos os produtos gerados pelos scripts são persistidos automaticamente no dire
 | Arquivo | Script Gerador | O que valida e entrega |
 | :--- | :--- | :--- |
 | `resultados/fornecedores_corrigido.csv` | `analise_qualidade.py` | Base de fornecedores estruturalmente validada, sem valores nulos ou duplicatas, pronta para consumo estatístico. |
-| `resultados/fornecedores_edf.csv` | `errant_finder.py` | Base tratada pelo **Errant Data Finder (EDF)** com **100% das linhas originais preservadas** ($N=4$) e valores extremos limitados ao teto estatístico $LS$ via *Winsorization*. |
-| `resultados/melhor_fornecedor.txt` | `fornecedores.py` | Ficha síntese do vencedor recomendado (**Fornecedor Beta** — pontuação ponderada **7,51 / 10,0**, Preço R$ 100,00, Prazo 5 dias, Defeitos 1,0%, Suporte 9,0). |
+| `resultados/fornecedores_edf.csv` | `errant_finder.py` | Base tratada pelo **Errant Data Finder (EDF)** com **100% das linhas originais preservadas** (`N = 4`) e valores extremos limitados ao teto estatístico `LS` via *Winsorization*. |
+| `resultados/melhor_fornecedor.txt` | `fornecedores.py` | Ficha síntese do vencedor recomendado (**Fornecedor Beta** — pontuação ponderada **7,51 / 10,0**, Preço `R$ 100,00`, Prazo `5 dias`, Defeitos `1,0%`, Suporte `9,0`). |
 
 ### 5.2. Relatórios Técnicos em Markdown
 
 | Relatório | Script Gerador | Conteúdo e Validação Analítica |
 | :--- | :--- | :--- |
-| `resultados/qualidade.md` | `analise_qualidade.py` | Documenta cardinalidade ($4 \times 5$), tipagem de colunas, verificação de ausências/duplicidades e preservação do arquivo bruto original. |
-| `resultados/relatorio_edf.md` | `errant_finder.py` | **Auditoria Estatística Completa (Antes vs. Depois):**<br/>• Mapeamento automático de colunas auditadas e direção dos critérios;<br/>• Tabelas de Média ($\mu$) vs. Mediana ($Q_2$), índice de assimetria (salto de `1,32%` para `261,84%` no estresse), quartis ($Q_1, Q_3, \text{IQR}$) e limites $[LI, LS]$;<br/>• Comprovação da captura dupla do outlier (`Delta = R$ 1.100,00` com $Z = 1{,}5000$, $Z_{\text{rob}} = 90{,}38$ e $> LS$);<br/>• Demonstração numérica da proteção das notas de 1 a 10 (evitando que a diferença entre Gama e Beta caia de `5,40 pts` para `0,13 pt`). |
+| `resultados/qualidade.md` | `analise_qualidade.py` | Documenta cardinalidade (`4 linhas × 5 colunas`), tipagem de colunas, verificação de ausências/duplicidades e preservação do arquivo bruto original. |
+| `resultados/relatorio_edf.md` | `errant_finder.py` | **Auditoria Estatística Completa (Antes vs. Depois):**<br/>• Mapeamento automático de colunas auditadas e direção dos critérios;<br/>• Tabelas de Média (`μ`) vs. Mediana (`Q2`), índice de assimetria (salto de `1,32%` para `261,84%` no estresse), quartis (`Q1`, `Q3`, `IQR`) e limites `[LI, LS]`;<br/>• Comprovação da captura dupla do outlier (`Delta = R$ 1.100,00` com `Z = 1,5000`, `Z_robusto = 90,38` e `> LS`);<br/>• Demonstração numérica da proteção das notas de 1 a 10 (evitando que a diferença entre Gama e Beta caia de `5,40 pts` para `0,13 pt`). |
 | `resultados/relatorio_fornecedores.md` | `fornecedores.py` | Apresenta a tabela comparativa dos 4 fornecedores, os pesos atribuídos a cada critério e o ranking completo da Matriz de Decisão. |
 
 ### 5.3. Gráficos Editoriais em Alta Resolução (150 DPI)
 
 | Gráfico (`150 DPI`) | Script Gerador | O que demonstra visualmente |
 | :--- | :--- | :--- |
-| `resultados/grafico_edf.png` | `errant_finder.py` | **Painel Duplo EDF:** à esquerda, captura do dado errante em vermelho ($\text{R\$ } 1.100$), linhas tracejadas dos limites IQR ($LS_{\text{lin}} = \text{R\$ } 741{,}88$ e $LS_{\text{ref}} = \text{R\$ } 123{,}12$) e barra pós-*Winsorization*; à direita, comparação das notas de 1 a 10 *Sem EDF (Distorcido)* vs. *Com EDF (Blindado)* vs. *Base Original*. |
+| `resultados/grafico_edf.png` | `errant_finder.py` | **Painel Duplo EDF:** à esquerda, captura do dado errante em vermelho (`R$ 1.100`), linhas tracejadas dos limites IQR (`LS_lin = R$ 741,88` e `LS_ref = R$ 123,12`) e barra pós-*Winsorization*; à direita, comparação das notas de 1 a 10 *Sem EDF (Distorcido)* vs. *Com EDF (Blindado)* vs. *Base Original*. |
 | `resultados/grafico_fornecedores.png` | `fornecedores.py` | **Painel Duplo MCDA:** ranking da pontuação final ponderada (destacando a linha do vencedor **Beta** em `7,51`) e decomposição das notas de 1 a 10 nos 4 critérios avaliados. |
 | `resultados/grafico_radar_fornecedores.png` | `fornecedores.py` | **Gráfico Polar/Radar:** sobreposição da área de desempenho multicritério de `Alfa`, `Beta`, `Gama` e `Delta`, evidenciando o equilíbrio superior de **Beta**. |
-| `resultados/grafico_tradeoff_custo_qualidade.png` | `fornecedores.py` | **Análise de Dispersão (Trade-off):** cruzamento entre Preço Unitário (R$) e Taxa de Defeitos (%) com quadrantes operacionais (*Zona Ideal* vs. *Zona Desfavorável*). |
-| `resultados/grafico_termometro.png` | `termometro.py` | **Calibração Linear ($y = 0{,}16x + 4{,}0$):** resposta elétrica de transmissor industrial de temperatura (0–100 ºC para 4–20 mA), destacando zonas operacionais (Baixa, Média e Alta) e o ponto de teste $(50\text{ ºC} \rightarrow 12{,}0\text{ mA})$. |
+| `resultados/grafico_tradeoff_custo_qualidade.png` | `fornecedores.py` | **Análise de Dispersão (Trade-off):** cruzamento entre Preço Unitário (`R$`) e Taxa de Defeitos (`%`) com quadrantes operacionais (*Zona Ideal* vs. *Zona Desfavorável*). |
+| `resultados/grafico_termometro.png` | `termometro.py` | **Calibração Linear (`y = 0,16x + 4,0`):** resposta elétrica de transmissor industrial de temperatura (0–100 ºC para 4–20 mA), destacando zonas operacionais (Baixa, Média e Alta) e o ponto de teste (`50 ºC → 12,0 mA`). |
 
 ---
 
@@ -185,42 +185,3 @@ Todos os produtos gerados pelos scripts são persistidos automaticamente no dire
 **Desenvolvido com rigor estatístico e engenharia de dados no ecossistema Google Antigravity.**
 
 </div>
-
-## 5. Artefatos e Entregáveis (`resultados/`)
-
-Todos os produtos gerados pelos scripts são persistidos automaticamente no diretório `resultados/`:
-
-### 5.1. Bases de Dados Tratadas e Fichas Executivas
-
-| Arquivo | Script Gerador | O que valida e entrega |
-| :--- | :--- | :--- |
-| `resultados/fornecedores_corrigido.csv` | `analise_qualidade.py` | Base de fornecedores estruturalmente validada, sem valores nulos ou duplicatas, pronta para consumo estatístico. |
-| `resultados/fornecedores_edf.csv` | `errant_finder.py` | Base tratada pelo **Errant Data Finder (EDF)** com **100% das linhas originais preservadas** ($N=4$) e valores extremos limitados ao teto estatístico $LS$ via *Winsorization*. |
-| `resultados/melhor_fornecedor.txt` | `fornecedores.py` | Ficha síntese do vencedor recomendado (**Fornecedor Beta** — pontuação ponderada **7,51 / 10,0**, Preço R$ 100,00, Prazo 5 dias, Defeitos 1,0%, Suporte 9,0). |
-
-### 5.2. Relatórios Técnicos em Markdown
-
-| Relatório | Script Gerador | Conteúdo e Validação Analítica |
-| :--- | :--- | :--- |
-| `resultados/qualidade.md` | `analise_qualidade.py` | Documenta cardinalidade ($4 \times 5$), tipagem de colunas, verificação de ausências/duplicidades e preservação do arquivo bruto original. |
-| `resultados/relatorio_edf.md` | `errant_finder.py` | **Auditoria Estatística Completa (Antes vs. Depois):**<br/>• Mapeamento automático de colunas auditadas e direção dos critérios;<br/>• Tabelas de Média ($\mu$) vs. Mediana ($Q_2$), índice de assimetria (salto de `1,32%` para `261,84%` no estresse), quartis ($Q_1, Q_3, \text{IQR}$) e limites $[LI, LS]$;<br/>• Comprovação da captura dupla do outlier (`Delta = R$ 1.100,00` com $Z = 1{,}5000$, $Z_{\text{rob}} = 90{,}38$ e $> LS$);<br/>• Demonstração numérica da proteção das notas de 1 a 10 (evitando que a diferença entre Gama e Beta caia de `5,40 pts` para `0,13 pt`). |
-| `resultados/relatorio_fornecedores.md` | `fornecedores.py` | Apresenta a tabela comparativa dos 4 fornecedores, os pesos atribuídos a cada critério e o ranking completo da Matriz de Decisão. |
-
-### 5.3. Gráficos Editoriais em Alta Resolução (150 DPI)
-
-| Gráfico (`150 DPI`) | Script Gerador | O que demonstra visualmente |
-| :--- | :--- | :--- |
-| `resultados/grafico_edf.png` | `errant_finder.py` | **Painel Duplo EDF:** à esquerda, captura do dado errante em vermelho ($\text{R\$ } 1.100$), linhas tracejadas dos limites IQR ($LS_{\text{lin}} = \text{R\$ } 741{,}88$ e $LS_{\text{ref}} = \text{R\$ } 123{,}12$) e barra pós-*Winsorization*; à direita, comparação das notas de 1 a 10 *Sem EDF (Distorcido)* vs. *Com EDF (Blindado)* vs. *Base Original*. |
-| `resultados/grafico_fornecedores.png` | `fornecedores.py` | **Painel Duplo MCDA:** ranking da pontuação final ponderada (destacando a linha do vencedor **Beta** em `7,51`) e decomposição das notas de 1 a 10 nos 4 critérios avaliados. |
-| `resultados/grafico_radar_fornecedores.png` | `fornecedores.py` | **Gráfico Polar/Radar:** sobreposição da área de desempenho multicritério de `Alfa`, `Beta`, `Gama` e `Delta`, evidenciando o equilíbrio superior de **Beta**. |
-| `resultados/grafico_tradeoff_custo_qualidade.png` | `fornecedores.py` | **Análise de Dispersão (Trade-off):** cruzamento entre Preço Unitário (R$) e Taxa de Defeitos (%) com quadrantes operacionais (*Zona Ideal* vs. *Zona Desfavorável*). |
-| `resultados/grafico_termometro.png` | `termometro.py` | **Calibração Linear ($y = 0{,}16x + 4{,}0$):** resposta elétrica de transmissor industrial de temperatura (0–100 ºC para 4–20 mA), destacando zonas operacionais (Baixa, Média e Alta) e o ponto de teste $(50\text{ ºC} \rightarrow 12{,}0\text{ mA})$. |
-
----
-
-<div align="center">
-
-**Desenvolvido com rigor estatístico e engenharia de dados no ecossistema Google Antigravity.**
-
-</div>
-
