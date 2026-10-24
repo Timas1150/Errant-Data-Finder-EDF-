@@ -1,0 +1,5 @@
+fornecedor,preco_unitario,prazo_dias,defeitos_pct,suporte_nota
+Alfa,90,8,2,8
+Beta,100,5,1,9
+Gama,85,12,4,6
+Delta,110,4,0.5,9.5

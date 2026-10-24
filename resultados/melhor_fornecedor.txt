@@ -1,0 +1,8 @@
+=== MELHOR FORNECEDOR RECOMENDADO ===
+Fornecedor: Beta
+Pontuacao Final Ponderada: 7.51 (de 10.0)
+Preco Unitario: R$ 100.00
+Prazo de Entrega: 5 dias
+Taxa de Defeitos: 1.0%
+Nota de Suporte: 9.0
+Criterio de Decisao: Maior equilibrio multicriterio ponderado (Decision Matrix)
